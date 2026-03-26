@@ -1,4 +1,6 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+const PROD_API_URL = 'https://clipxai-production.up.railway.app';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? 'http://localhost:3001' : PROD_API_URL);
 const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET || '';
 
 export type StyleKey = 'cartoon' | 'flat' | 'anime' | 'pixel' | 'sketch';
@@ -20,6 +22,10 @@ export const generateClipart = async (
   imageBase64: string,
   styles: StyleKey[]
 ): Promise<GenerateClipartResponse> => {
+  if (!API_SECRET) {
+    throw new Error('API secret missing in build config');
+  }
+
   const response = await fetch(`${API_URL}/api/generate-clipart`, {
     method: 'POST',
     headers: {
@@ -31,7 +37,7 @@ export const generateClipart = async (
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `Request failed: ${response.status}`);
+    throw new Error(err.error || err.message || `Request failed: ${response.status}`);
   }
 
   return response.json();

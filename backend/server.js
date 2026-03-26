@@ -3,6 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const Replicate = require('replicate');
 
+// Validate critical env vars at startup
+if (!process.env.REPLICATE_API_KEY) {
+  throw new Error('REPLICATE_API_KEY is not set');
+}
+if (!process.env.API_SECRET) {
+  throw new Error('API_SECRET is not set');
+}
+
 const app = express();
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || '')
   .split(',')
@@ -22,10 +30,18 @@ app.use(
 );
 app.use(express.json({ limit: '20mb' }));
 
+// Strict security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
 const PORT = process.env.PORT || 5000;
 const DEMO_MODE = process.env.DEMO_MODE === 'true';
 const REPLICATE_REQUEST_DELAY_MS = Number(process.env.REPLICATE_REQUEST_DELAY_MS || 1200);
-const MODEL_TARGET = process.env.MODEL_TARGET || 'sdxl-img2img';
+const MODEL_TARGET = process.env.MODEL_TARGET || 'google/gemini-2.5-flash-image';
 
 // Replicate client
 const replicate = new Replicate({
@@ -109,6 +125,10 @@ app.post('/api/generate-clipart', validateSecret, rateLimit, async (req, res) =>
       return res.status(400).json({ error: 'Image too large. Max 5MB.' });
     }
 
+    if (!process.env.REPLICATE_API_KEY) {
+      return res.status(500).json({ error: 'Server misconfiguration: API key missing.' });
+    }
+
     // Demo fallback mode for local development when Replicate credits are unavailable.
     if (DEMO_MODE) {
       const output = {};
@@ -178,7 +198,16 @@ async function generateStyle(imageBase64, style) {
     const sanitizedBase64 = String(imageBase64).replace(/^data:image\/[a-zA-Z]+;base64,/, '');
     let output;
 
-    if (MODEL_TARGET === 'qwen-image-2512') {
+    if (MODEL_TARGET === 'google/gemini-2.5-flash-image' || MODEL_TARGET === 'gemini-2.5-flash-image') {
+      output = await replicate.run('google/gemini-2.5-flash-image', {
+        input: {
+          prompt: `Transform this person photo into ${style} clipart style while preserving face identity and pose. ${STYLE_PROMPTS[style]}`,
+          image_input: [`data:image/jpeg;base64,${sanitizedBase64}`],
+          aspect_ratio: 'match_input_image',
+          output_format: 'jpg',
+        },
+      });
+    } else if (MODEL_TARGET === 'qwen-image-2512') {
       // Optional path if you explicitly want to test Qwen.
       // Note: qwen model behavior/inputs can change; SDXL path below is the stable img2img default.
       output = await replicate.run('qwen/qwen-image-2512', {
@@ -277,6 +306,19 @@ function normalizeReplicateUrl(value) {
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+// Global error handler
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Internal server error';
+  console.error(`[${new Date().toISOString()}] Error:`, message);
+  res.status(statusCode).json({ error: message, code: statusCode });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);

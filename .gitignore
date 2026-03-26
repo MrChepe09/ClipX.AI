@@ -43,3 +43,8 @@ app-example
 # generated native folders
 /ios
 /android
+
+# accidental native scaffolding inside backend
+/backend/android
+/backend/ios
+/backend/app.json
