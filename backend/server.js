@@ -17,13 +17,38 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // mobile apps / curl / server-to-server
+
+  const expoDevPatterns = [
+    /^exp:\/\//i,
+    /^exps:\/\//i,
+    /^http:\/\/localhost(?::\d+)?$/i,
+    /^http:\/\/127\.0\.0\.1(?::\d+)?$/i,
+    /^http:\/\/192\.168\.[0-9.]+(?::\d+)?$/i,
+    /^https:\/\/.*\.expo\.dev$/i,
+    /^https:\/\/u\.expo\.dev$/i,
+  ];
+
+  if (CORS_ORIGINS.includes(origin)) {
+    return true;
+  }
+
+  if (CORS_ORIGINS.length === 0) {
+    return true;
+  }
+
+  return expoDevPatterns.some((pattern) => pattern.test(origin));
+};
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // mobile apps / curl / server-to-server
-      if (CORS_ORIGINS.length === 0 || CORS_ORIGINS.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
+
+      console.warn(`Blocked CORS origin: ${origin}`);
       return callback(new Error('Not allowed by CORS'));
     },
   })
@@ -250,6 +275,15 @@ async function generateStyle(imageBase64, style) {
     const code = error?.status || error?.response?.status;
     const message = error?.message || 'Unknown generation error';
     console.error(`Error generating ${style}:`, message);
+
+    if (/nsfw|safety/i.test(message)) {
+      return {
+        status: 'failed',
+        code: 422,
+        error: 'Image was blocked by model safety filters. Try a different photo or retry with another style.',
+        style,
+      };
+    }
 
     if (code === 402) {
       return {

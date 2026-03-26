@@ -10,13 +10,13 @@ import {
     Image,
     Linking,
     Pressable,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     View,
 } from 'react-native';
 import Compare, { After, Before, DefaultDragger } from 'react-native-before-after-slider-v2';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StyleKey, generateClipart } from '@/src/services/clipartService';
 
@@ -62,6 +62,7 @@ function SkeletonBox({ style }: { style?: object }) {
 export default function GenerationScreen() {
   const { imageBase64, styles: selectedStylesParam } = useLocalSearchParams<{ imageBase64: string; styles?: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const progressAnim = useRef(new Animated.Value(0)).current;
   const cardAnimMap = useRef<Record<string, Animated.Value>>({}).current;
 
@@ -214,7 +215,7 @@ export default function GenerationScreen() {
   }, [requestedStyles, results, cardAnimMap]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: Math.max(insets.top, 10) }]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
@@ -311,7 +312,7 @@ export default function GenerationScreen() {
                       <Compare
                         width={COMPARE_WIDTH}
                         height={COMPARE_HEIGHT}
-                        initial={COMPARE_WIDTH / 2}
+                        initial={0}
                         draggerWidth={44}
                         onMoveStart={() => setScrollEnabled(false)}
                         onMoveEnd={() => setScrollEnabled(true)}>
@@ -333,8 +334,8 @@ export default function GenerationScreen() {
                   )}
 
                   <View style={styles.compareLegendRow}>
-                    <Text style={styles.compareLegendText}>{isDemoResult ? 'Old (red demo)' : 'Before'}</Text>
-                    <Text style={styles.compareLegendText}>{isDemoResult ? 'New (uploaded)' : 'After'}</Text>
+                    <Text style={styles.compareLegendText}>{isDemoResult ? 'New (uploaded)' : 'After (AI)'}</Text>
+                    <Text style={styles.compareLegendText}>{isDemoResult ? 'Old (red demo)' : 'Before (Original)'}</Text>
                   </View>
 
                   <View style={styles.actionRow}>

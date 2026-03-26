@@ -4,12 +4,12 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StyleKey } from '@/src/services/clipartService';
 import {
@@ -29,6 +29,7 @@ const AVAILABLE_STYLES: { key: StyleKey; label: string }[] = [
 ];
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const [selectedImage, setSelectedImage] = useState<ImagePickerResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +98,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: Math.max(insets.top, 10) }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
