@@ -1,50 +1,141 @@
-# Welcome to your Expo app 👋
+# ClipX.AI – AI Clipart Generator
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+ClipX.AI is an Expo React Native app that converts a user photo into multiple AI-generated clipart styles (cartoon, flat, anime, pixel, sketch) using a secure Express backend proxy with Replicate.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Photo input from gallery or camera
+- Image normalization and validation before upload
+- Multi-style generation (sequential processing to reduce API throttling)
+- Per-style status cards (`loading`, `success`, `failed`)
+- Before/after image compare slider
+- Retry failed styles individually
+- Download and share generated images
+- Secure backend API secret validation
+- Basic rate limiting and CORS controls
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+### Frontend
+- Expo + React Native + TypeScript
+- Expo Router for navigation
+- `expo-image-picker`, `expo-image-manipulator`
+- `expo-file-system`, `expo-sharing`
 
-   ```bash
-   npx expo start
-   ```
+### Backend
+- Node.js + Express
+- Replicate SDK for model inference
+- `dotenv` for environment config
+- In-memory request rate limiting
 
-In the output, you'll find options to open the app in a
+## Project Structure
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- `app/` → Screens and router layouts
+- `src/services/` → API and image utility services
+- `backend/` → Express API server
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Key files:
+- `app/(tabs)/index.tsx` – upload + style selection screen
+- `app/generation.tsx` – generation results and compare UI
+- `src/services/imageService.ts` – image pick/normalize/validate
+- `src/services/clipartService.ts` – client API calls
+- `backend/server.js` – API, validation, generation logic
 
-## Get a fresh project
+## Environment Variables
 
-When you're ready, run:
+Copy templates and fill values:
 
-```bash
-npm run reset-project
+- Frontend template: `.env.example`
+- Backend template: `backend/.env.example`
+
+Frontend `.env`:
+
+```env
+EXPO_PUBLIC_API_URL=https://your-backend-domain.com
+EXPO_PUBLIC_API_SECRET=your_api_secret
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Backend `backend/.env`:
 
-## Learn more
+```env
+PORT=3001
+REPLICATE_API_KEY=your_replicate_key
+API_SECRET=your_api_secret
+DEMO_MODE=false
+MODEL_TARGET=sdxl-img2img
+REPLICATE_REQUEST_DELAY_MS=1200
+CORS_ORIGINS=https://your-frontend-domain.com
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Local Development
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 1) Install dependencies
 
-## Join the community
+```bash
+# frontend
+npm install
 
-Join our community of developers creating universal apps.
+# backend
+cd backend
+npm install
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 2) Start backend
+
+```bash
+cd backend
+npm start
+```
+
+### 3) Start Expo app
+
+```bash
+npx expo start
+```
+
+## Android (Expo Go on physical device)
+
+- Ensure phone and laptop are on the same Wi-Fi network
+- Set `EXPO_PUBLIC_API_URL` to a reachable backend URL (not `localhost`)
+- Reload Expo app after env changes
+
+## API Endpoints
+
+### `GET /health`
+Returns service status, active model target, and demo mode state.
+
+### `POST /api/generate-clipart`
+Headers:
+- `Content-Type: application/json`
+- `x-api-secret: <API_SECRET>`
+
+Body:
+
+```json
+{
+  "imageBase64": "<base64 image>",
+  "styles": ["cartoon", "anime"]
+}
+```
+
+## Deployment (Recommended)
+
+- Deploy `backend/` as a Node service on Railway/Fly/VPS
+- Set backend environment variables in host dashboard
+- Use deployed HTTPS URL in frontend `.env`
+
+## Security Notes
+
+- Do not commit real `.env` files
+- Rotate `REPLICATE_API_KEY` and `API_SECRET` if exposed
+- Keep strict `CORS_ORIGINS` in production
+
+## Current Status
+
+- Core app and backend flow implemented
+- Ready for deployment, E2E validation, and release packaging
+
+## Submission placeholders
+
+- APK / AAB link: _Add here_
+- Demo video link: _Add here_
