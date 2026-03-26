@@ -19,6 +19,7 @@ import Compare, { After, Before, DefaultDragger } from 'react-native-before-afte
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StyleKey, generateClipart } from '@/src/services/clipartService';
+import { getGenerationImage } from '@/src/services/generationSession';
 
 const STYLES: StyleKey[] = ['cartoon', 'flat', 'anime', 'pixel', 'sketch'];
 const COMPARE_WIDTH = Dimensions.get('window').width - 64;
@@ -65,6 +66,8 @@ export default function GenerationScreen() {
   const insets = useSafeAreaInsets();
   const progressAnim = useRef(new Animated.Value(0)).current;
   const cardAnimMap = useRef<Record<string, Animated.Value>>({}).current;
+  const sessionImage = getGenerationImage();
+  const resolvedImageBase64 = sessionImage?.base64 || imageBase64;
 
   const requestedStyles = useMemo<StyleKey[]>(() => {
     if (!selectedStylesParam) return STYLES;
@@ -85,9 +88,10 @@ export default function GenerationScreen() {
   const [generatingStyle, setGeneratingStyle] = useState<StyleKey | null>(null);
 
   const originalImageUri = useMemo(() => {
-    if (!imageBase64) return undefined;
-    return imageBase64.startsWith('data:image') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
-  }, [imageBase64]);
+    if (sessionImage?.uri) return sessionImage.uri;
+    if (!resolvedImageBase64) return undefined;
+    return resolvedImageBase64.startsWith('data:image') ? resolvedImageBase64 : `data:image/jpeg;base64,${resolvedImageBase64}`;
+  }, [sessionImage?.uri, resolvedImageBase64]);
 
   const downloadImage = async (style: StyleKey, imageUrl: string) => {
     try {
@@ -127,13 +131,13 @@ export default function GenerationScreen() {
   };
 
   const generateSingleStyle = async (style: StyleKey) => {
-    if (!imageBase64) return;
+    if (!resolvedImageBase64) return;
 
     setGeneratingStyle(style);
     setResults((prev) => ({ ...prev, [style]: { status: 'loading' } }));
 
     try {
-      const response = await generateClipart(imageBase64, [style]);
+      const response = await generateClipart(resolvedImageBase64, [style]);
       const r = response.results[style];
 
       setResults((prev) => ({
@@ -157,7 +161,10 @@ export default function GenerationScreen() {
   };
 
   const runGeneration = async () => {
-    if (!imageBase64) return;
+    if (!resolvedImageBase64) {
+      setHasError(true);
+      return;
+    }
 
     setHasError(false);
     progressAnim.setValue(0);
@@ -181,7 +188,7 @@ export default function GenerationScreen() {
 
   useEffect(() => {
     runGeneration();
-  }, [selectedStylesParam]);
+  }, [selectedStylesParam, resolvedImageBase64]);
 
   const successCount = requestedStyles.filter(s => results[s]?.status === 'success').length;
   const loadingCount = requestedStyles.filter(s => results[s]?.status === 'loading').length;

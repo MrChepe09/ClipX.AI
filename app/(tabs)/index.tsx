@@ -12,6 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StyleKey } from '@/src/services/clipartService';
+import { setGenerationImage } from '@/src/services/generationSession';
 import {
   ImagePickerResult,
   pickImageFromCamera,
@@ -35,6 +36,7 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [selectedStyles, setSelectedStyles] = useState<StyleKey[]>([]);
   const [styleError, setStyleError] = useState<string | null>(null);
+  const [isOpeningGenerator, setIsOpeningGenerator] = useState(false);
   const router = useRouter();
 
   const toggleStyle = (style: StyleKey) => {
@@ -95,6 +97,29 @@ export default function HomeScreen() {
   const handleClear = () => {
     setSelectedImage(null);
     setError(null);
+  };
+
+  const handleGenerate = () => {
+    if (!selectedImage) return;
+
+    if (selectedStyles.length === 0) {
+      setStyleError('Please select at least one style before generating.');
+      return;
+    }
+
+    setStyleError(null);
+    setIsOpeningGenerator(true);
+    setGenerationImage(selectedImage);
+
+    requestAnimationFrame(() => {
+      router.push({
+        pathname: '/generation',
+        params: {
+          styles: selectedStyles.join(','),
+        },
+      });
+      setIsOpeningGenerator(false);
+    });
   };
 
   return (
@@ -178,24 +203,13 @@ export default function HomeScreen() {
         {/* Generate CTA */}
         {selectedImage && (
           <Pressable
-            style={[styles.generateBtn, selectedStyles.length === 0 && styles.btnDisabled]}
-            onPress={() => {
-              if (selectedStyles.length === 0) {
-                setStyleError('Please select at least one style before generating.');
-                return;
-              }
-
-              setStyleError(null);
-              router.push({
-                pathname: '/generation',
-                params: {
-                  imageBase64: selectedImage.base64,
-                  styles: selectedStyles.join(','),
-                },
-              });
-            }}>
+            style={[styles.generateBtn, (selectedStyles.length === 0 || isOpeningGenerator) && styles.btnDisabled]}
+            disabled={selectedStyles.length === 0 || isOpeningGenerator}
+            onPress={handleGenerate}>
             <Ionicons name="sparkles-outline" size={20} color="#fff" />
-            <Text style={styles.generateBtnText}>Generate Clipart Styles</Text>
+            <Text style={styles.generateBtnText}>
+              {isOpeningGenerator ? 'Opening generator...' : 'Generate Clipart Styles'}
+            </Text>
           </Pressable>
         )}
 
