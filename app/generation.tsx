@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -9,6 +10,7 @@ import {
     Dimensions,
     Image,
     Linking,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -97,11 +99,23 @@ export default function GenerationScreen() {
     try {
       setBusyStyle(style);
       const extension = imageUrl.includes('.png') ? 'png' : 'jpg';
-      const fileUri = `${FileSystem.documentDirectory}${style}-${Date.now()}.${extension}`;
+      const fileUri = `${FileSystem.cacheDirectory}${style}-${Date.now()}.${extension}`;
       await FileSystem.downloadAsync(imageUrl, fileUri);
-      Alert.alert('Downloaded', `Saved file for ${STYLE_LABELS[style]}`);
+
+      const permission = await MediaLibrary.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission required', 'Please allow media access to save images to your gallery.');
+        return;
+      }
+
+      const asset = await MediaLibrary.createAssetAsync(fileUri);
+      if (Platform.OS === 'android') {
+        await MediaLibrary.createAlbumAsync('ClipX AI', asset, false).catch(() => Promise.resolve());
+      }
+
+      Alert.alert('Saved to gallery', `Image saved for ${STYLE_LABELS[style]}`);
     } catch (error) {
-      Alert.alert('Download failed', 'Unable to save image on this device.');
+      Alert.alert('Download failed', 'Unable to save image to gallery on this device.');
     } finally {
       setBusyStyle(null);
     }
